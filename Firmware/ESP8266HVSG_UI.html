@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slider and Buttons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 50px;
+        }
+        input[type="range"] {
+            width: 300px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Current Limit / ADC Value</h1>
+
+    <input type="range" id="slider" min="0" max="487" step="1" value="50">
+    <div class="slider-value" id="sliderValue">50</div>
+    <div>
+        <button id="add1">+1</button>
+        <button id="unlock_unsafe">Unlock Current Limit (Advanced)</button>
+        <button id="subtract1">-1</button>
+    </div>
+    <div>
+        <button id="mode1" data-mode="1">Mode 1</button>
+        <button id="mode2" data-mode="2">Mode 2</button>
+        <button id="mode3" data-mode="3">Mode 3</button>
+    </div>
+
+    <h1>Frequency Control</h1>
+    <input type="range" id="frequencySlider" min="50" max="1000" step="1" value="500">
+    <div class="frequency-value" id="frequencyValue">500</div>
+    <div>
+        <button id="increaseFrequency">+1</button>
+        <button id="decreaseFrequency">-1</button>
+    </div>
+
+    <script>
+        let lastSliderValue = parseFloat(document.getElementById('slider').value);
+        let lastFrequencyValue = parseInt(document.getElementById('frequencySlider').value);
+        let lastMode = null;
+        let timeout = null;
+
+        function sendRequest(climit, mode, frequency) {
+            const xhr = new XMLHttpRequest();
+            const params = new URLSearchParams();
+            if (climit !== undefined) params.append('climit', climit);
+            if (mode !== null) params.append('mode', mode);
+            if (frequency !== undefined) params.append('frequency', frequency);
+
+            xhr.open('GET', 'http://192.168.6.1?' + params.toString(), true);
+            xhr.send();
+        }
+        
+        function handleRequest(climit, mode, frequency) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                sendRequest(climit, mode, frequency);
+            }, 50);
+        }
+        
+        function updateSlider(value) {
+            lastSliderValue = value;
+            document.getElementById('slider').value = lastSliderValue;
+            document.getElementById('sliderValue').textContent = `${lastSliderValue}`;
+            handleRequest(lastSliderValue, lastMode, lastFrequencyValue);
+        }
+
+        function updateFrequency(value) {
+            lastFrequencyValue = value;
+            document.getElementById('frequencySlider').value = lastFrequencyValue;
+            document.getElementById('frequencyValue').textContent = `${lastFrequencyValue}`;
+            handleRequest(lastSliderValue, lastMode, lastFrequencyValue);
+        }
+
+        // Current Limit Slider Events
+        document.getElementById('slider').addEventListener('input', function() {
+            const currentSliderValue = parseFloat(this.value);
+            if (currentSliderValue !== lastSliderValue) {
+                updateSlider(currentSliderValue);
+            }
+        });
+        
+        // Frequency Slider Events
+        document.getElementById('frequencySlider').addEventListener('input', function() {
+            const currentFrequencyValue = parseInt(this.value);
+            if (currentFrequencyValue !== lastFrequencyValue) {
+                updateFrequency(currentFrequencyValue);
+            }
+        });
+
+        // Button click event for modes
+        document.querySelectorAll('button[id^="mode"]').forEach(button => {
+            button.addEventListener('click', function() {
+                lastMode = this.getAttribute('data-mode');
+                handleRequest(lastSliderValue, lastMode, lastFrequencyValue);
+            });
+        });
+
+        // Adjust Current Limit Buttons
+        document.getElementById('add1').addEventListener('click', () => updateSlider(lastSliderValue + 1));
+        document.getElementById('subtract1').addEventListener('click', () => updateSlider(lastSliderValue - 1));
+        
+        // Unlock Button
+        document.getElementById('unlock_unsafe').addEventListener('click', function() {
+            window.location.replace("http://192.168.6.1/?unlkcur=1");
+        });
+
+        // Adjust Frequency Buttons
+        document.getElementById('increaseFrequency').addEventListener('click', () => updateFrequency(lastFrequencyValue + 1));
+        document.getElementById('decreaseFrequency').addEventListener('click', () => updateFrequency(lastFrequencyValue - 1));
+    </script>
+
+</body>
+</html>
